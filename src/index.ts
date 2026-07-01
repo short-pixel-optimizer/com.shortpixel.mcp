@@ -6,6 +6,8 @@ import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { getAllowedHosts, getNumber } from "./config/environment.js";
 import { extractApiKey } from "./http/auth.js";
+import { requestLogMiddleware } from "./http/request-log-middleware.js";
+import { requestLogger } from "./logging/request-logger.js";
 import { createMcpServer } from "./mcp/create-mcp-server.js";
 
 const allowedHosts = getAllowedHosts();
@@ -30,6 +32,8 @@ app.use(
   }),
 );
 
+app.use(requestLogMiddleware);
+
 app.get("/health", (_request: Request, response: Response) => {
   response.json({
     status: "ok",
@@ -37,10 +41,29 @@ app.get("/health", (_request: Request, response: Response) => {
   });
 });
 
+app.get("/ping", (request: Request, response: Response) => {
+  const apiKey = extractApiKey(request);
+
+  if (!apiKey) {
+    response.status(401).json({
+      status: "error",
+      message: "Missing API key. Send Authorization: Bearer <api_key>",
+    });
+    return;
+  }
+
+  response.json({
+    status: "ok",
+    service: "shortpixel-mcp",
+    auth: "ok",
+  });
+});
+
 app.post("/mcp", async (request: Request, response: Response) => {
   const apiKey = extractApiKey(request);
 
   if (!apiKey) {
+    requestLogger.warn("mcp_auth_missing", { path: "/mcp" });
     response.status(401).json({
       jsonrpc: "2.0",
       error: {
@@ -68,7 +91,8 @@ app.post("/mcp", async (request: Request, response: Response) => {
       server.close();
     });
   } catch (error) {
-    console.error("MCP request failed:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    requestLogger.error("mcp_request_failed", { message });
 
     if (!response.headersSent) {
       response.status(500).json({
@@ -115,6 +139,7 @@ app.listen(port, "0.0.0.0", (error?: Error) => {
 
   console.log(`ShortPixel MCP HTTP server listening on port ${port}`);
   console.log(`Health: http://0.0.0.0:${port}/health`);
+  console.log(`Ping:   http://0.0.0.0:${port}/ping`);
   console.log(`MCP:    http://0.0.0.0:${port}/mcp`);
 });
 

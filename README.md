@@ -43,8 +43,25 @@ Endpoints:
 
 | Path | Method | Description |
 |------|--------|-------------|
-| `/health` | GET | Health check |
+| `/health` | GET | Health check (no API key) |
+| `/ping` | GET | Auth check — returns ok if API key header is present |
 | `/mcp` | POST | MCP Streamable HTTP endpoint |
+
+### Quick test (curl)
+
+Server up, no API key:
+
+```bash
+curl http://mcp.shortpixel.com:3000/health
+```
+
+API key present (simple check):
+
+```bash
+curl -i -H "Authorization: Bearer YOUR_API_KEY" http://mcp.shortpixel.com:3000/ping
+```
+
+Use `http://` (not `https://`) on port 3000 unless TLS is configured on nginx.
 
 ## Authentication
 
@@ -87,8 +104,59 @@ Replace the URL with your deployed host during development (e.g. `http://localho
 | `ALLOWED_HOSTS` | no | — | Comma-separated Host header allowlist (recommended in production) |
 | `SHORTPIXEL_API_URL` | no | `https://api.shortpixel.com/v2` | Upstream SPIO API base URL |
 | `SHORTPIXEL_PLUGIN_VERSION` | no | `MCP01` | Plugin version sent to SPIO |
+| `LOG_LEVEL` | no | `info` | Log verbosity: `debug`, `info`, `warn`, `error` |
+| `LOG_FORMAT` | no | `text` | `text` = human-readable lines; `json` = structured JSON |
 
 For internal ShortPixel development, set `SHORTPIXEL_API_URL=https://devapi2.shortpixel.com/v2`.
+
+## Request logging
+
+Logs go to stdout (`pm2 logs` / `npm start`).
+
+**Default (`LOG_FORMAT=text`)** — narrative flow you can follow:
+
+```
+[2026-06-30 15:01:53] [1/5] MCP client → MCP: connect (initialize) | client IP: ...
+[2026-06-30 15:01:53] [2/5] MCP client → MCP: session ready
+[2026-06-30 15:02:18] [3/5] MCP protocol IN | decides to use tool: "spio_optimize_urls" (client sent tools/call)
+           {
+             "jsonrpc": "2.0",
+             "method": "tools/call",
+             "params": {
+               "name": "spio_optimize_urls",
+               "arguments": { "urls": ["https://example.com/image.jpg"], "lossy": 1, "wait": 20 }
+             },
+             "id": 2
+           }
+[2026-06-30 15:02:18] [4/5] MCP → SPIO API: POST reducer.php (args mapped to SPIO payload) | ...
+[2026-06-30 15:02:35] [5/5] MCP ← SPIO API: Success | reduction: 27.41% | optimized: http://api.shortpixel.com/f/...-lossy.jpg | original: ...
+[2026-06-30 15:02:35] MCP protocol OUT | tools/call response | tool: spio_optimize_urls | HTTP 200
+           { "jsonrpc": "2.0", "id": 2, "result": { ... } }
+[2026-06-30 15:02:35] MCP → MCP client: tool result sent (16.3s)
+```
+
+Noise is filtered: `/health`, `GET /mcp` (405), and `tools/list` unless `LOG_LEVEL=debug`.
+
+**Structured (`LOG_FORMAT=json`)** — one JSON object per line:
+
+| Event | When |
+|-------|------|
+| `http_request` | Every request (method, path, status, duration, MCP method/tool) |
+| `spio_request` | Outgoing call to SPIO `reducer.php` |
+| `spio_response` | SPIO result summary (status, % improvement) |
+| `mcp_auth_missing` | Request without API key |
+
+API keys are masked (`****abcd`). Full keys are never logged.
+
+**Note:** The chat prompt never reaches this server. The LLM (inside the MCP client) turns user text into a structured `tools/call`; the server only sees JSON-RPC arguments and maps them to the SPIO API.
+
+```bash
+pm2 logs shortpixel-mcp
+# or
+npm start
+```
+
+Set `LOG_LEVEL=debug` for `tools/list` and extra HTTP lines.
 
 ## Deploy on dev server
 
@@ -117,7 +185,8 @@ src/http/auth.ts                API key extraction from requests
 src/mcp/create-mcp-server.ts    Per-request MCP server factory
 src/clients/spio-api-client.ts  ShortPixel SPIO HTTP client
 src/tools/spio-tools.ts         MCP tools
-src/config/environment.ts       Server configuration
+src/http/request-log-middleware.ts HTTP request logging
+src/logging/request-logger.ts    Structured JSON logger
 ```
 
 ## Naming conventions
