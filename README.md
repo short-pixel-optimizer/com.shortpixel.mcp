@@ -63,6 +63,16 @@ curl -i -H "Authorization: Bearer YOUR_API_KEY" http://mcp.shortpixel.com:3000/p
 
 Use `http://` (not `https://`) on port 3000 unless TLS is configured on nginx.
 
+MCP request (important: Streamable HTTP clients must accept both JSON and SSE):
+
+```bash
+curl -s -N -X POST http://mcp.shortpixel.com:3000/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+```
+
 ## Authentication
 
 Send the user's ShortPixel API key on every MCP request:
@@ -106,6 +116,7 @@ Replace the URL with your deployed host during development (e.g. `http://localho
 | `SHORTPIXEL_PLUGIN_VERSION` | no | `MCP01` | Plugin version sent to SPIO |
 | `LOG_LEVEL` | no | `info` | Log verbosity: `debug`, `info`, `warn`, `error` |
 | `LOG_FORMAT` | no | `text` | `text` = human-readable lines; `json` = structured JSON |
+| `LOG_MCP_PROTOCOL` | no | `true` | Log inbound/outbound MCP JSON-RPC payloads |
 
 For internal ShortPixel development, set `SHORTPIXEL_API_URL=https://devapi2.shortpixel.com/v2`.
 
@@ -116,26 +127,26 @@ Logs go to stdout (`pm2 logs` / `npm start`).
 **Default (`LOG_FORMAT=text`)** — narrative flow you can follow:
 
 ```
-[2026-06-30 15:01:53] [1/5] MCP client → MCP: connect (initialize) | client IP: ...
-[2026-06-30 15:01:53] [2/5] MCP client → MCP: session ready
-[2026-06-30 15:02:18] [3/5] MCP protocol IN | decides to use tool: "spio_optimize_urls" (client sent tools/call)
+[2026-06-30 15:01:53] [1/5] → CLIENT | HTTP POST /mcp | JSON-RPC request: "initialize" (client connects) | id: 0
            {
              "jsonrpc": "2.0",
-             "method": "tools/call",
-             "params": {
-               "name": "spio_optimize_urls",
-               "arguments": { "urls": ["https://example.com/image.jpg"], "lossy": 1, "wait": 20 }
-             },
-             "id": 2
+             "method": "initialize",
+             "id": 0,
+             "params": { ... }
            }
+[2026-06-30 15:01:53] [1/5] ← SERVER | HTTP POST /mcp 200 | JSON-RPC response: "initialize" (client connects)
+[2026-06-30 15:01:53] [2/5] → CLIENT | HTTP POST /mcp | JSON-RPC request: "notifications/initialized" (session ready, no response body expected) | id: null
+[2026-06-30 15:01:53] [2.5/5] → CLIENT | HTTP POST /mcp | JSON-RPC request: "tools/list" (client asks which tools exist) | id: 1
+[2026-06-30 15:01:53] [2.5/5] ← SERVER | HTTP POST /mcp 200 | JSON-RPC response: "tools/list" (client asks which tools exist) | tools discovered: spio_optimize_urls
+[2026-06-30 15:02:18] [3/5] → CLIENT | HTTP POST /mcp | JSON-RPC request: "tools/call" (client runs a tool) | id: 2 | tool: "spio_optimize_urls"
 [2026-06-30 15:02:18] [4/5] MCP → SPIO API: POST reducer.php (args mapped to SPIO payload) | ...
 [2026-06-30 15:02:35] [5/5] MCP ← SPIO API: Success | reduction: 27.41% | optimized: http://api.shortpixel.com/f/...-lossy.jpg | original: ...
-[2026-06-30 15:02:35] MCP protocol OUT | tools/call response | tool: spio_optimize_urls | HTTP 200
+[2026-06-30 15:02:35] [3/5] ← SERVER | HTTP POST /mcp 200 | JSON-RPC response: "tools/call" (client runs a tool) | tool: spio_optimize_urls
            { "jsonrpc": "2.0", "id": 2, "result": { ... } }
-[2026-06-30 15:02:35] MCP → MCP client: tool result sent (16.3s)
+[2026-06-30 15:02:35]     ✓ round-trip done (16.3s)
 ```
 
-Noise is filtered: `/health`, `GET /mcp` (405), and `tools/list` unless `LOG_LEVEL=debug`.
+`LOG_MCP_PROTOCOL=false` keeps only high-level app logs and hides MCP payload dumps.
 
 **Structured (`LOG_FORMAT=json`)** — one JSON object per line:
 
@@ -187,6 +198,7 @@ src/clients/spio-api-client.ts  ShortPixel SPIO HTTP client
 src/tools/spio-tools.ts         MCP tools
 src/http/request-log-middleware.ts HTTP request logging
 src/logging/request-logger.ts    Structured JSON logger
+src/logging/mcp-protocol-log.ts  MCP protocol payload capture/normalize
 ```
 
 ## Naming conventions
