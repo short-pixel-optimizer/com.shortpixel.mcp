@@ -143,7 +143,43 @@ function normalizeOutboundPayload(responseBody: unknown): unknown {
   return prettifyMcpToolResult(parsed);
 }
 
-export function logInboundMcpProtocol(body: unknown, clientIp?: string): void {
+function readToolNamesFromToolsList(payload: unknown): string[] {
+  if (!payload || typeof payload !== "object") {
+    return [];
+  }
+
+  const record = payload as Record<string, unknown>;
+  const result = record.result;
+
+  if (!result || typeof result !== "object") {
+    return [];
+  }
+
+  const tools = (result as Record<string, unknown>).tools;
+
+  if (!Array.isArray(tools)) {
+    return [];
+  }
+
+  return tools
+    .map((tool) => {
+      if (!tool || typeof tool !== "object") {
+        return undefined;
+      }
+
+      const name = (tool as Record<string, unknown>).name;
+      return typeof name === "string" ? name : undefined;
+    })
+    .filter((name): name is string => Boolean(name));
+}
+
+export function logInboundMcpProtocol(
+  body: unknown,
+  requestHeaders: Record<string, unknown>,
+  clientIp?: string,
+  httpMethod = "POST",
+  path = "/mcp",
+): void {
   if (!isMcpProtocolLoggingEnabled()) {
     return;
   }
@@ -156,9 +192,12 @@ export function logInboundMcpProtocol(body: unknown, clientIp?: string): void {
 
   requestLogger.info("mcp_protocol_in", {
     clientIp,
+    httpMethod,
+    path,
     method: message.method,
     id: message.id,
     toolName: readToolName(message),
+    headers: requestHeaders,
     payload: message,
   });
 }
@@ -167,6 +206,9 @@ export function logOutboundMcpProtocol(
   inboundBody: unknown,
   responseBody: unknown,
   statusCode: number,
+  responseHeaders: Record<string, unknown>,
+  httpMethod = "POST",
+  path = "/mcp",
 ): void {
   if (!isMcpProtocolLoggingEnabled()) {
     return;
@@ -174,16 +216,24 @@ export function logOutboundMcpProtocol(
 
   const message = readRpcMessage(inboundBody);
 
-  if (!message || message.method !== "tools/call") {
+  if (!message || typeof message.method !== "string") {
     return;
   }
 
+  const normalizedPayload = normalizeOutboundPayload(responseBody);
+
   requestLogger.info("mcp_protocol_out", {
+    httpMethod,
+    path,
     method: message.method,
     id: message.id,
     toolName: readToolName(message),
+    toolNames: message.method === "tools/list"
+      ? readToolNamesFromToolsList(normalizedPayload)
+      : undefined,
     statusCode,
-    payload: normalizeOutboundPayload(responseBody),
+    headers: responseHeaders,
+    payload: normalizedPayload,
     payloadMissing: responseBody === undefined,
   });
 }

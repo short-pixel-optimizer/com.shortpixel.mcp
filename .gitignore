@@ -4,3 +4,4 @@ dist/
 .server.pid
 .idea/
 .vscode/
+/PLAN.md

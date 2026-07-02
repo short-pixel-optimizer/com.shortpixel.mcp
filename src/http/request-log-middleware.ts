@@ -51,7 +51,7 @@ export function requestLogMiddleware(request: Request, response: Response, next:
     : undefined;
 
   if (request.path === "/mcp" && request.method === "POST") {
-    logInboundMcpProtocol(request.body, request.ip);
+    logInboundMcpProtocol(request.body, request.headers, request.ip, request.method, request.path);
   }
 
   response.on("finish", () => {
@@ -73,7 +73,14 @@ export function requestLogMiddleware(request: Request, response: Response, next:
       Object.assign(fields, readMcpFields(request.body));
 
       if (getResponseBody) {
-        logOutboundMcpProtocol(request.body, getResponseBody(), response.statusCode);
+        logOutboundMcpProtocol(
+          request.body,
+          getResponseBody(),
+          response.statusCode,
+          response.getHeaders(),
+          request.method,
+          request.path,
+        );
       }
     }
 
