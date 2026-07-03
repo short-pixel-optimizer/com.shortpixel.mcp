@@ -188,6 +188,22 @@ Re-upload `package.json` and `package-lock.json` after each dependency change. I
 |------|-------------|
 | `spio_optimize_urls` | Optimize one or more public image URLs via SPIO reducer API |
 
+`spio_optimize_urls` arguments:
+
+- `urls` (required): Public image URLs to optimize (max 100)
+- `lossy`: Compression level (`0` lossless, `1` lossy, `2` glossy)
+- `wait`: Max wait seconds (`0` to return immediately, `1-30` to wait)
+- `upscale`: Upscale factor (`0`, `2`, `3`, `4`)
+- `resize`: Resize mode (`0` none, `1` outer, `3` inner, `4` smart crop)
+- `resize_width`, `resize_height`: Resize target dimensions in pixels
+- `cmyk2rgb`: Convert CMYK to RGB (`1` yes, `0` no)
+- `keep_exif`: Keep EXIF metadata (`1` keep, `0` remove)
+- `convertto`: Conversion value (`+webp`, `+avif`, `+webp|+avif`, `webp|avif`, `jpg`, `png`, `gif`)
+- `bg_remove`: Background removal (`1`, image URL, or `#rrggbbxx`)
+- `refresh`: Force source refetch (`1`) or use cached optimized data (`0`)
+- `paramlist`: Per-URL overrides array (must match `urls` length)
+- `returndatalist`: Any array echoed back unchanged in response
+
 ## Project layout
 
 ```text

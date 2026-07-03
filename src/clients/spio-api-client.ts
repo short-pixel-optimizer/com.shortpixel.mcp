@@ -4,10 +4,17 @@ import { maskApiKey, requestLogger } from "../logging/request-logger.js";
 export type OptimizeOptions = {
   lossy?: number;
   wait?: number;
+  upscale?: number;
   resize?: number;
   convertto?: string;
   resize_width?: number;
   resize_height?: number;
+  cmyk2rgb?: number;
+  keep_exif?: number;
+  bg_remove?: string | number;
+  refresh?: number;
+  paramlist?: Array<Record<string, unknown>>;
+  returndatalist?: unknown[];
 };
 
 export type SpioApiClientOptions = {
@@ -57,10 +64,19 @@ export class SpioApiClient {
       options: {
         lossy: payload.lossy,
         wait: payload.wait,
+        upscale: options.upscale,
         resize: payload.resize,
         convertto: options.convertto,
         resize_width: options.resize_width,
         resize_height: options.resize_height,
+        cmyk2rgb: options.cmyk2rgb,
+        keep_exif: options.keep_exif,
+        bg_remove: options.bg_remove,
+        refresh: options.refresh,
+        paramlist_count: Array.isArray(options.paramlist) ? options.paramlist.length : 0,
+        returndatalist_count: Array.isArray(options.returndatalist)
+          ? options.returndatalist.length
+          : 0,
       },
     });
 
