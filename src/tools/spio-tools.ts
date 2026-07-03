@@ -4,23 +4,65 @@ import { SpioApiClient } from "../clients/spio-api-client.js";
 
 const paramListItemSchema = z
   .object({
-    lossy: z.number().int().min(0).max(2).optional(),
-    wait: z.number().int().min(0).max(30).optional(),
-    upscale: z.union([z.literal(0), z.literal(2), z.literal(3), z.literal(4)]).optional(),
-    resize: z.union([z.literal(0), z.literal(1), z.literal(3), z.literal(4)]).optional(),
-    resize_width: z.number().int().positive().optional(),
-    resize_height: z.number().int().positive().optional(),
-    cmyk2rgb: z.union([z.literal(0), z.literal(1)]).optional(),
-    keep_exif: z.union([z.literal(0), z.literal(1)]).optional(),
-    convertto: z.string().min(1).optional(),
+    lossy: z
+      .number()
+      .int()
+      .min(0)
+      .max(2)
+      .optional()
+      .describe("Per-URL compression level override: 0=lossless, 1=lossy, 2=glossy"),
+    wait: z
+      .number()
+      .int()
+      .min(0)
+      .max(30)
+      .optional()
+      .describe("Per-URL wait time in seconds: 0=return immediately, 1-30=wait for processing"),
+    upscale: z
+      .union([z.literal(0), z.literal(2), z.literal(3), z.literal(4)])
+      .optional()
+      .describe("Per-URL upscale factor override: 0=off, 2=2x, 3=3x, 4=4x"),
+    resize: z
+      .union([z.literal(0), z.literal(1), z.literal(3), z.literal(4)])
+      .optional()
+      .describe("Per-URL resize mode override: 0=none, 1=outer, 3=inner, 4=smart crop"),
+    resize_width: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe("Per-URL target width in pixels, used with resize > 0"),
+    resize_height: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe("Per-URL target height in pixels, used with resize > 0"),
+    cmyk2rgb: z
+      .union([z.literal(0), z.literal(1)])
+      .optional()
+      .describe("Per-URL CMYK to RGB conversion override: 1=yes, 0=no"),
+    keep_exif: z
+      .union([z.literal(0), z.literal(1)])
+      .optional()
+      .describe("Per-URL EXIF handling override: 1=keep metadata, 0=remove metadata"),
+    convertto: z
+      .string()
+      .min(1)
+      .optional()
+      .describe("Per-URL format conversion override, e.g. +webp, +avif, +webp|+avif, webp|avif, jpg, png, gif"),
     bg_remove: z
       .union([
         z.literal(1),
         z.string().url(),
         z.string().regex(/^#[0-9a-fA-F]{8}$/),
       ])
-      .optional(),
-    refresh: z.union([z.literal(0), z.literal(1)]).optional(),
+      .optional()
+      .describe("Per-URL background removal override: 1=transparent, URL=background image, #rrggbbxx=color+alpha"),
+    refresh: z
+      .union([z.literal(0), z.literal(1)])
+      .optional()
+      .describe("Per-URL source refresh override: 1=force re-download, 0=allow cached optimized result"),
   })
   .strict();
 
@@ -32,9 +74,20 @@ export class SpioTools {
       "spio_optimize_urls",
       "Optimize one or more public image URLs via the ShortPixel SPIO reducer API",
       {
-        urls: z.array(z.string().url()).min(1).describe("Public image URLs to optimize"),
+        urls: z
+          .array(z.string().url())
+          .min(1)
+          .max(100)
+          .describe("Public image URLs to optimize, 1 to 100 entries"),
         lossy: z.number().int().min(0).max(2).optional().default(1).describe("Compression level: 0=lossless, 1=lossy, 2=glossy"),
-        wait: z.number().int().min(0).max(30).optional().default(20).describe("Seconds to wait for optimization"),
+        wait: z
+          .number()
+          .int()
+          .min(0)
+          .max(30)
+          .optional()
+          .default(20)
+          .describe("Maximum seconds to wait per API call: 0=return immediately, 1-30=wait for processing"),
         upscale: z
           .union([z.literal(0), z.literal(2), z.literal(3), z.literal(4)])
           .optional()
@@ -61,7 +114,7 @@ export class SpioTools {
           .string()
           .min(1)
           .optional()
-          .describe("Format conversion value, e.g. +webp, +avif, +webp|+avif, webp|avif, jpg, png, gif"),
+          .describe("Format conversion value, e.g. +webp, +avif, +webp|+avif, webp|avif, jpg, png, gif, empty means no conversion"),
         bg_remove: z
           .union([
             z.literal(1),
@@ -79,11 +132,11 @@ export class SpioTools {
           .array(paramListItemSchema)
           .max(100)
           .optional()
-          .describe("Per-URL parameter overrides; list length must match urls length"),
+          .describe("Per-URL parameter overrides by index; if provided, must have same length as urls"),
         returndatalist: z
           .array(z.unknown())
           .optional()
-          .describe("Any array echoed back unchanged in API response"),
+          .describe("Any array echoed back unchanged in API response for caller correlation"),
       },
       async (args) => this.handleOptimizeUrls(args),
     );
