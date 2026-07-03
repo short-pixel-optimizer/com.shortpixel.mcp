@@ -185,6 +185,16 @@ export class SpioApiClient {
         return [record];
       }
 
+      const indexedResults = Object.keys(record)
+        .filter((key) => /^\d+$/.test(key))
+        .sort((left, right) => Number(left) - Number(right))
+        .map((key) => record[key])
+        .filter((item): item is Record<string, unknown> => !!item && typeof item === "object");
+
+      if (indexedResults.length > 0) {
+        return indexedResults;
+      }
+
       const message =
         typeof record.Message === "string"
           ? record.Message
