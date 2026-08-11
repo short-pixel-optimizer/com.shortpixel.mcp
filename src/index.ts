@@ -10,6 +10,19 @@ import { requestLogMiddleware } from "./http/request-log-middleware.js";
 import { requestLogger } from "./logging/request-logger.js";
 import { createMcpServer } from "./mcp/create-mcp-server.js";
 
+function readMcpMethod(body: unknown): string | undefined {
+  if (!body || typeof body !== "object") {
+    return undefined;
+  }
+
+  const payload = body as Record<string, unknown>;
+  return typeof payload.method === "string" ? payload.method : undefined;
+}
+
+function isAuthRequiredForMcpMethod(method: string | undefined): boolean {
+  return method !== "initialize" && method !== "tools/list";
+}
+
 const allowedHosts = getAllowedHosts();
 const app = createMcpExpressApp({
   host: "0.0.0.0",
@@ -60,10 +73,12 @@ app.get("/ping", (request: Request, response: Response) => {
 });
 
 app.post("/mcp", async (request: Request, response: Response) => {
+  const mcpMethod = readMcpMethod(request.body);
   const apiKey = extractApiKey(request);
+  const requiresAuth = isAuthRequiredForMcpMethod(mcpMethod);
 
-  if (!apiKey) {
-    requestLogger.warn("mcp_auth_missing", { path: "/mcp" });
+  if (requiresAuth && !apiKey) {
+    requestLogger.warn("mcp_auth_missing", { path: "/mcp", mcpMethod });
     response.status(401).json({
       jsonrpc: "2.0",
       error: {
@@ -76,7 +91,7 @@ app.post("/mcp", async (request: Request, response: Response) => {
     return;
   }
 
-  const server = createMcpServer(apiKey);
+  const server = createMcpServer(apiKey ?? "__MCP_DISCOVERY_ONLY__");
 
   try {
     const transport = new StreamableHTTPServerTransport({
