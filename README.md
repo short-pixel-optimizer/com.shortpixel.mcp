@@ -137,11 +137,11 @@ Logs go to stdout (`pm2 logs` / `npm start`).
 [2026-06-30 15:01:53] [1/5] ← SERVER | HTTP POST /mcp 200 | JSON-RPC response: "initialize" (client connects)
 [2026-06-30 15:01:53] [2/5] → CLIENT | HTTP POST /mcp | JSON-RPC request: "notifications/initialized" (session ready, no response body expected) | id: null
 [2026-06-30 15:01:53] [2.5/5] → CLIENT | HTTP POST /mcp | JSON-RPC request: "tools/list" (client asks which tools exist) | id: 1
-[2026-06-30 15:01:53] [2.5/5] ← SERVER | HTTP POST /mcp 200 | JSON-RPC response: "tools/list" (client asks which tools exist) | tools discovered: spio_optimize_urls
-[2026-06-30 15:02:18] [3/5] → CLIENT | HTTP POST /mcp | JSON-RPC request: "tools/call" (client runs a tool) | id: 2 | tool: "spio_optimize_urls"
+[2026-06-30 15:01:53] [2.5/5] ← SERVER | HTTP POST /mcp 200 | JSON-RPC response: "tools/list" (client asks which tools exist) | tools discovered: optimize_image_urls
+[2026-06-30 15:02:18] [3/5] → CLIENT | HTTP POST /mcp | JSON-RPC request: "tools/call" (client runs a tool) | id: 2 | tool: "optimize_image_urls"
 [2026-06-30 15:02:18] [4/5] MCP → SPIO API: POST reducer.php (args mapped to SPIO payload) | ...
 [2026-06-30 15:02:35] [5/5] MCP ← SPIO API: Success | reduction: 27.41% | optimized: http://api.shortpixel.com/f/...-lossy.jpg | original: ...
-[2026-06-30 15:02:35] [3/5] ← SERVER | HTTP POST /mcp 200 | JSON-RPC response: "tools/call" (client runs a tool) | tool: spio_optimize_urls
+[2026-06-30 15:02:35] [3/5] ← SERVER | HTTP POST /mcp 200 | JSON-RPC response: "tools/call" (client runs a tool) | tool: optimize_image_urls
            { "jsonrpc": "2.0", "id": 2, "result": { ... } }
 [2026-06-30 15:02:35]     ✓ round-trip done (16.3s)
 ```
@@ -186,9 +186,9 @@ Re-upload `package.json` and `package-lock.json` after each dependency change. I
 
 | Tool | Description |
 |------|-------------|
-| `spio_optimize_urls` | Optimize one or more public image URLs via SPIO reducer API |
+| `optimize_image_urls` | Optimize one or more public image URLs via SPIO reducer API |
 
-`spio_optimize_urls` arguments:
+`optimize_image_urls` arguments:
 
 - `urls` (required): Public image URLs to optimize (max 100)
 - `lossy`: Compression level (`0` lossless, `1` lossy, `2` glossy)

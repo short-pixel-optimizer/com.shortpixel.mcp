@@ -71,7 +71,7 @@ export class SpioTools {
 
   registerTools(server: McpServer): void {
     server.tool(
-      "spio_optimize_urls",
+      "optimize_image_urls",
       "Optimize one or more public image URLs via the ShortPixel SPIO reducer API",
       {
         urls: z
