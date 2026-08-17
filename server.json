@@ -1,0 +1,26 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.shortpixel/mcp",
+  "title": "ShortPixel Image Optimizer",
+  "description": "Optimize public image URLs via the ShortPixel SPIO API for AI agents",
+  "version": "0.2.0",
+  "websiteUrl": "https://shortpixel.com",
+  "repository": {
+    "url": "https://github.com/short-pixel-optimizer/com.shortpixel.mcp",
+    "source": "github"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.shortpixel.com/mcp",
+      "headers": [
+        {
+          "name": "Authorization",
+          "description": "Bearer token with your ShortPixel API key (Authorization: Bearer <api_key>)",
+          "isRequired": true,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}
