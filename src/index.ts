@@ -4,7 +4,7 @@ import type { Request, Response } from "express";
 import cors from "cors";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { getAllowedHosts, getNumber } from "./config/environment.js";
+import { getAllowedHosts, getMcpRegistryAuthRecord, getNumber } from "./config/environment.js";
 import { extractApiKey } from "./http/auth.js";
 import { requestLogMiddleware } from "./http/request-log-middleware.js";
 import { requestLogger } from "./logging/request-logger.js";
@@ -46,6 +46,17 @@ app.use(
 );
 
 app.use(requestLogMiddleware);
+
+app.get("/.well-known/mcp-registry-auth", (_request: Request, response: Response) => {
+  const record = getMcpRegistryAuthRecord();
+
+  if (!record) {
+    response.status(404).type("text/plain").send("Not found\n");
+    return;
+  }
+
+  response.status(200).type("text/plain; charset=utf-8").send(`${record}\n`);
+});
 
 app.get("/health", (_request: Request, response: Response) => {
   response.json({

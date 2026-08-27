@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from "node:fs";
 import { config } from "dotenv";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -51,4 +52,21 @@ export function getSpioApiUrl(): string {
 
 export function getPluginVersion(): string {
   return get("SHORTPIXEL_PLUGIN_VERSION", "MCP01")!;
+}
+
+export function getMcpRegistryAuthRecord(): string | undefined {
+  const fromEnv = get("MCP_REGISTRY_AUTH")?.trim();
+
+  if (fromEnv) {
+    return fromEnv;
+  }
+
+  const filePath = resolve(projectRoot, "mcp-registry-auth");
+
+  if (!existsSync(filePath)) {
+    return undefined;
+  }
+
+  const fromFile = readFileSync(filePath, "utf8").trim();
+  return fromFile.length > 0 ? fromFile : undefined;
 }
