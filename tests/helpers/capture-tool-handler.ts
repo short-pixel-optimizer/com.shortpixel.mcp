@@ -12,10 +12,9 @@ export function captureOptimizeHandler(tools: SpioTools): OptimizeToolHandler {
   let handler: OptimizeToolHandler | undefined;
 
   const mockServer = {
-    tool(
+    registerTool(
       _name: string,
-      _description: string,
-      _schema: unknown,
+      _config: unknown,
       registeredHandler: OptimizeToolHandler,
     ) {
       handler = registeredHandler;

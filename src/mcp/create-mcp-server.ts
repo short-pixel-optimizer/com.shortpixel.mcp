@@ -3,7 +3,7 @@ import { SpioApiClient } from "../clients/spio-api-client.js";
 import { SpioTools } from "../tools/spio-tools.js";
 
 const SERVER_NAME = "ShortPixel MCP";
-const SERVER_VERSION = "0.1.0";
+const SERVER_VERSION = "0.3.0";
 
 export function createMcpServer(apiKey: string): McpServer {
   const server = new McpServer({
