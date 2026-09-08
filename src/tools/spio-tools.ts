@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { SpioApiClient } from "../clients/spio-api-client.js";
+import { assertPublicHttpUrl, assertPublicHttpUrls } from "../security/public-http-url.js";
 
 const paramListItemSchema = z
   .object({
@@ -189,6 +190,15 @@ export class SpioTools {
       throw new Error("paramlist must have the same number of entries as urls");
     }
 
+    await assertPublicHttpUrls(urls);
+    await assertOptionalBackgroundUrl(bg_remove);
+
+    if (paramlist) {
+      for (const item of paramlist) {
+        await assertOptionalBackgroundUrl(item.bg_remove);
+      }
+    }
+
     const options: Record<string, unknown> = {
       lossy,
       wait,
@@ -241,4 +251,17 @@ export class SpioTools {
       ],
     };
   }
+}
+
+async function assertOptionalBackgroundUrl(value: unknown): Promise<void> {
+  if (typeof value !== "string") {
+    return;
+  }
+
+  // Color token #rrggbbxx is not a fetch target
+  if (value.startsWith("#")) {
+    return;
+  }
+
+  await assertPublicHttpUrl(value);
 }

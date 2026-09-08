@@ -6,22 +6,10 @@ import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { getAllowedHosts, getMcpRegistryAuthRecord, getNumber } from "./config/environment.js";
 import { extractApiKey } from "./http/auth.js";
+import { isAuthRequiredForMcpMethod, readMcpMethod } from "./http/mcp-auth.js";
 import { requestLogMiddleware } from "./http/request-log-middleware.js";
 import { requestLogger } from "./logging/request-logger.js";
 import { createMcpServer } from "./mcp/create-mcp-server.js";
-
-function readMcpMethod(body: unknown): string | undefined {
-  if (!body || typeof body !== "object") {
-    return undefined;
-  }
-
-  const payload = body as Record<string, unknown>;
-  return typeof payload.method === "string" ? payload.method : undefined;
-}
-
-function isAuthRequiredForMcpMethod(method: string | undefined): boolean {
-  return method !== "initialize" && method !== "tools/list";
-}
 
 const allowedHosts = getAllowedHosts();
 const app = createMcpExpressApp({
