@@ -45,7 +45,10 @@ function readMcpFields(body: unknown): Record<string, unknown> {
 
 export function requestLogMiddleware(request: Request, response: Response, next: NextFunction): void {
   const startedAt = Date.now();
-  const apiKey = extractApiKey(request);
+  // Headers are already available at this point regardless of body-parsing
+  // order, so it's safe to start this now and only await it once the
+  // response finishes - purely for the masked key in the log line below
+  const apiKeyPromise = extractApiKey(request);
   const getResponseBody = request.path === "/mcp" && request.method === "POST"
     ? captureResponseBody(response as Parameters<typeof captureResponseBody>[0])
     : undefined;
@@ -55,6 +58,11 @@ export function requestLogMiddleware(request: Request, response: Response, next:
   }
 
   response.on("finish", () => {
+    void logCompletedRequest();
+  });
+
+  async function logCompletedRequest(): Promise<void> {
+    const apiKey = await apiKeyPromise;
     const durationMs = Date.now() - startedAt;
     const fields: Record<string, unknown> = {
       httpMethod: request.method,
@@ -96,7 +104,7 @@ export function requestLogMiddleware(request: Request, response: Response, next:
     }
 
     requestLogger[level]("http_request", fields);
-  });
+  }
 
   next();
 }
