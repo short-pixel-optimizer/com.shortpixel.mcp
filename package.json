@@ -26,10 +26,13 @@
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.2.1",
+    "jose": "^6.2.12",
+    "oidc-provider": "^9.12.2",
     "typescript": "^5.8.3",
     "zod": "^3.25.67"
   },
   "devDependencies": {
+    "@types/oidc-provider": "^9.12.1",
     "tsx": "^4.19.4"
   }
 }

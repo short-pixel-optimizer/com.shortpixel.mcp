@@ -4,6 +4,7 @@ dist/
 key.pem
 *.pem
 .server.pid
+/secrets/
 .idea/
 .vscode/
 /PLAN.md
