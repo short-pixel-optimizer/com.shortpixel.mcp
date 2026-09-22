@@ -122,7 +122,7 @@ For internal ShortPixel development, set `SHORTPIXEL_API_URL=https://devapi2.sho
 
 ## Request logging
 
-Logs go to stdout (`pm2 logs` / `npm start`).
+Logs go to stdout, which the `shortpixel-mcp` systemd service redirects to `/var/log/shortpixel/mcp.log` (`npm start` shows them directly when running locally).
 
 **Default (`LOG_FORMAT=text`)** — narrative flow you can follow:
 
@@ -162,22 +162,24 @@ API keys are masked (`****abcd`). Full keys are never logged.
 **Note:** The chat prompt never reaches this server. The LLM (inside the MCP client) turns user text into a structured `tools/call`; the server only sees JSON-RPC arguments and maps them to the SPIO API.
 
 ```bash
-pm2 logs shortpixel-mcp
-# or
+tail -f /var/log/shortpixel/mcp.log
+# or, running locally
 npm start
 ```
 
 Set `LOG_LEVEL=debug` for `tools/list` and extra HTTP lines.
 
-## Deploy on dev server
+## Deploy
+
+Runs as the `shortpixel-mcp` systemd service (unit file at `/etc/systemd/system/shortpixel-mcp.service`), which runs `node dist/index.js` directly (no pm2) and reads env vars from `.env` in the project directory (`EnvironmentFile=`).
 
 ```bash
-cd /xxx/mcp.shortpixel.com
+cd /web/mcp.shortpixel.com   # liveVPS; a separate host from the rest of the PHP stack
 npm ci
 npm run build
-cp .env.example .env
-# set ALLOWED_HOSTS and PORT, then run behind nginx with TLS
-npm start
+# edit .env directly on the server (not deployed - gitignored)
+sudo systemctl restart shortpixel-mcp
+sudo systemctl status shortpixel-mcp
 ```
 
 Re-upload `package.json` and `package-lock.json` after each dependency change. If build still fails, run `npm ci --include=dev` (some servers set `NODE_ENV=production` which skips devDependencies).

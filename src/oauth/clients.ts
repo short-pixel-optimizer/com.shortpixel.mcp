@@ -1,10 +1,16 @@
 /**
- * Trusted OAuth 2.1 clients registered with this server's Authorization Server.
+ * Statically trusted OAuth 2.1 clients registered with this server's
+ * Authorization Server.
  *
- * These are public clients (no client_secret): PKCE (S256) is required for
- * all of them instead. Real clients (Claude, ChatGPT) are added here once
- * their exact redirect_uris are confirmed; until then a local test client
- * lets the full flow be exercised end-to-end with curl/a manual browser test.
+ * Real MCP clients (Claude, ChatGPT, Cursor, Mistral, ...) no longer need an
+ * entry here: provider.ts enables Dynamic Client Registration (RFC 7591) and
+ * Client ID Metadata Documents (draft-ietf-oauth-client-id-metadata-document-02),
+ * so they register/resolve themselves on first connect. This array is now
+ * only for the local test client used to exercise the full flow end-to-end
+ * with curl/a manual browser test, without needing a real client to hand.
+ *
+ * These are public clients (no client_secret): PKCE (S256) is required
+ * instead.
  */
 
 import type { ClientMetadata } from "oidc-provider";
@@ -19,33 +25,4 @@ export const TRUSTED_CLIENTS: ClientMetadata[] = [
     token_endpoint_auth_method: "none",
     application_type: "native",
   },
-
-  // Claude web (claude.ai custom connector) - redirect_uri per Anthropic's
-  // MCP connector docs. Loopback entries cover Claude Code / Cursor, where
-  // the port varies per launch and is ignored during matching.
-  // {
-  //   client_id: "claude",
-  //   client_name: "Claude",
-  //   redirect_uris: [
-  //     "https://claude.ai/api/mcp/auth_callback",
-  //     "http://localhost/callback",
-  //     "http://127.0.0.1/callback",
-  //   ],
-  //   grant_types: ["authorization_code", "refresh_token"],
-  //   response_types: ["code"],
-  //   token_endpoint_auth_method: "none",
-  //   application_type: "native",
-  // },
-
-  // ChatGPT - redirect_uri TBD, confirm exact value from OpenAI's Apps SDK
-  // docs before enabling.
-  // {
-  //   client_id: "chatgpt",
-  //   client_name: "ChatGPT",
-  //   redirect_uris: [],
-  //   grant_types: ["authorization_code", "refresh_token"],
-  //   response_types: ["code"],
-  //   token_endpoint_auth_method: "none",
-  //   application_type: "web",
-  // },
 ];

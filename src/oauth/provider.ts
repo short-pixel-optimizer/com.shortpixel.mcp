@@ -21,6 +21,13 @@ export function createOauthProvider(): Provider {
 
     cookies: {
       keys: loadOrCreateCookieKeys(),
+      // oidc-provider scopes the _interaction cookie's path to wherever
+      // interactions.url() points (/interaction/:uid below) by default, so
+      // it's absent by the time the browser reaches /oauth/www-callback -
+      // a different path - breaking the second interactionDetails() call
+      // there (and interactionFinished()'s own internal one). Root path
+      // makes it available everywhere on this domain instead.
+      short: { httpOnly: true, sameSite: "lax", path: "/" },
     },
 
     pkce: {
@@ -46,6 +53,27 @@ export function createOauthProvider(): Provider {
           scope: MCP_SCOPE,
           accessTokenFormat: "jwt",
         }),
+      },
+
+      // RFC 7591 Dynamic Client Registration - lets real MCP clients
+      // (ChatGPT, Cursor, Mistral, ...) register themselves on first
+      // connect instead of us hand-maintaining their client_id/redirect_uri
+      // in clients.ts. Registration only creates client *metadata* - the
+      // actual account access still requires a human login+consent on
+      // com.shortpixel.www (see www-bridge.ts), so leaving it open (no
+      // initial access token) matches how the wider MCP ecosystem expects
+      // this endpoint to behave.
+      registration: {
+        enabled: true,
+        initialAccessToken: false,
+      },
+
+      // draft-ietf-oauth-client-id-metadata-document-02 - Claude's
+      // recommended connector mode: client_id is an HTTPS URL this server
+      // fetches metadata from directly, no registration step needed.
+      clientIdMetadataDocument: {
+        enabled: true,
+        ack: "draft-02",
       },
     },
 

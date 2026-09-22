@@ -356,7 +356,11 @@ export class RequestLogger {
       case "spio_unexpected_format":
         return [`[${time}] MCP ← SPIO API: unexpected response — ${fields.bodyPreview ?? ""}`];
       default:
-        return null;
+        // Any event not given its own narrative line above still gets
+        // printed - silently dropping unknown events here (as before) meant
+        // every warn()/error() call added elsewhere was invisible in text
+        // format, with no signal that logging itself was the problem.
+        return [`[${time}] ${event} | ${JSON.stringify(fields)}`];
     }
   }
 
