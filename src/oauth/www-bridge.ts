@@ -89,6 +89,7 @@ export function createInteractionHandler(provider: Provider) {
 interface ExchangeCodeResponse {
   userId: number;
   apiKey: string;
+  clientId: string;
 }
 
 async function exchangeCode(code: string): Promise<ExchangeCodeResponse | undefined> {
@@ -162,15 +163,40 @@ export function createWwwCallbackHandler(provider: Provider) {
         return;
       }
 
+      const interaction = await provider.interactionDetails(request, response);
+      const params = interaction.params as Record<string, unknown>;
+      const authoritativeClientId = getStringParam(params.client_id);
+
+      // com.shortpixel.www's clientId is audit data it echoes back from its
+      // own DB row - it never decides which client gets the grant, but a
+      // mismatch here means the consent screen a human just approved showed
+      // a different client than the one this cookie-bound interaction was
+      // actually opened for (a stale/reused interaction, or a hand-crafted
+      // link to the www-authorize page). Refuse rather than silently trust
+      // whichever one PHP reports.
+      if (exchangeResult.clientId !== authoritativeClientId) {
+        requestLogger.error("oauth_client_id_mismatch", {
+          expected: authoritativeClientId,
+          received: exchangeResult.clientId,
+        });
+        await provider.interactionFinished(
+          request,
+          response,
+          {
+            error: "access_denied",
+            error_description: "Client mismatch detected.",
+          },
+          { mergeWithLastSubmission: false },
+        );
+        return;
+      }
+
       const accountId = String(exchangeResult.userId);
       storeAccount({ userId: exchangeResult.userId, apiKey: exchangeResult.apiKey });
 
-      const interaction = await provider.interactionDetails(request, response);
-      const params = interaction.params as Record<string, unknown>;
-
       const grant = new provider.Grant({
         accountId,
-        clientId: getStringParam(params.client_id),
+        clientId: authoritativeClientId,
       });
       grant.addResourceScope(MCP_RESOURCE_IDENTIFIER, MCP_SCOPE);
       const grantId = await grant.save();
