@@ -1,5 +1,5 @@
 import type { Request } from "express";
-import { looksLikeJwt, verifyOauthAccessToken } from "../oauth/verify-token.js";
+import { looksLikeOauthToken, verifyOauthAccessToken } from "../oauth/verify-token.js";
 
 /**
  * Extracts the ShortPixel API key to use for this request. The bearer token
@@ -15,7 +15,7 @@ export async function extractApiKey(request: Request): Promise<string | undefine
     const token = authorization.slice(7).trim();
 
     if (token) {
-      if (looksLikeJwt(token)) {
+      if (looksLikeOauthToken(token)) {
         const apiKey = await verifyOauthAccessToken(token);
 
         if (apiKey) {

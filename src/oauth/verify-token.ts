@@ -5,10 +5,17 @@
  * it at issuance (see provider.ts's extraTokenClaims)
  */
 
-import { createLocalJWKSet, jwtVerify, type JSONWebKeySet, type JWK } from "jose";
+import {
+  compactDecrypt,
+  createLocalJWKSet,
+  jwtVerify,
+  type JSONWebKeySet,
+  type JWK,
+} from "jose";
 import { getOauthIssuer } from "../config/environment.js";
 import { loadOrCreateJwks } from "./jwks.js";
 import { MCP_RESOURCE_IDENTIFIER } from "./resource.js";
+import { loadOrCreateTokenEncryptionKey } from "./token-encryption-key.js";
 
 // jose's own signing key file - loadOrCreateJwks() - carries full private
 // RSA material (d, p, q, dp, dq, qi) because provider.ts needs it to sign
@@ -32,19 +39,31 @@ function toPublicJwks(fullJwks: { keys: JWK[] }): JSONWebKeySet {
 }
 
 const jwks = createLocalJWKSet(toPublicJwks(loadOrCreateJwks() as { keys: JWK[] }));
+const tokenEncryptionKey = loadOrCreateTokenEncryptionKey();
 
 /**
  * A raw ShortPixel API key (CommonsConfig::API_KEY_LENGTH = 20 alnum chars)
- * never contains a dot; a JWT always has exactly two. Cheap enough to check
- * before attempting real signature verification.
+ * never contains a dot; a JWT/JWE always does. Anything dotted goes through
+ * OAuth verification and is never accepted as a raw key.
  */
-export function looksLikeJwt(value: string): boolean {
-  return value.split(".").length === 3;
+export function looksLikeOauthToken(value: string): boolean {
+  return value.includes(".");
 }
 
+/**
+ * Access tokens are nested JWTs: RS256-signed, then JWE-encrypted (dir +
+ * A256GCM) - see provider.ts. Only the encrypted form is accepted, so a
+ * plain signed token (readable API key) is refused even if its signature
+ * is valid.
+ */
 export async function verifyOauthAccessToken(token: string): Promise<string | undefined> {
   try {
-    const { payload } = await jwtVerify(token, jwks, {
+    const { plaintext } = await compactDecrypt(token, tokenEncryptionKey, {
+      keyManagementAlgorithms: ["dir"],
+      contentEncryptionAlgorithms: ["A256GCM"],
+    });
+
+    const { payload } = await jwtVerify(new TextDecoder().decode(plaintext), jwks, {
       issuer: getOauthIssuer(),
       audience: MCP_RESOURCE_IDENTIFIER,
     });
@@ -52,9 +71,9 @@ export async function verifyOauthAccessToken(token: string): Promise<string | un
     const apiKey = payload.api_key;
     return typeof apiKey === "string" && apiKey.length > 0 ? apiKey : undefined;
   } catch {
-    // A raw, non-OAuth bearer token that happens to contain two dots would
-    // also land here - falling through to try it as a static API key is the
-    // correct behavior, not an error worth logging.
+    // Forged, expired, or plain-signed tokens all land here; the caller
+    // falls back to the X-ShortPixel-Api-Key header, so this isn't an error
+    // worth logging.
     return undefined;
   }
 }

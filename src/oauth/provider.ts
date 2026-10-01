@@ -13,8 +13,11 @@ import { TRUSTED_CLIENTS } from "./clients.js";
 import { loadOrCreateCookieKeys } from "./cookie-keys.js";
 import { loadOrCreateJwks } from "./jwks.js";
 import { MCP_RESOURCE_IDENTIFIER, MCP_SCOPE } from "./resource.js";
+import { loadOrCreateTokenEncryptionKey } from "./token-encryption-key.js";
 
 export function createOauthProvider(): Provider {
+  const tokenEncryptionKey = loadOrCreateTokenEncryptionKey();
+
   const provider = new Provider(getOauthIssuer(), {
     clients: TRUSTED_CLIENTS,
     jwks: loadOrCreateJwks(),
@@ -49,9 +52,15 @@ export function createOauthProvider(): Provider {
       resourceIndicators: {
         enabled: true,
         defaultResource: () => MCP_RESOURCE_IDENTIFIER,
+        // Signed (RS256) then encrypted (JWE dir + A256GCM): the token
+        // embeds the user's API key, so only this server may read it.
         getResourceServerInfo: () => ({
           scope: MCP_SCOPE,
           accessTokenFormat: "jwt",
+          jwt: {
+            sign: { alg: "RS256" },
+            encrypt: { alg: "dir", enc: "A256GCM", key: tokenEncryptionKey },
+          },
         }),
       },
 
