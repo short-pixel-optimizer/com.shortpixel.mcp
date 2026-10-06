@@ -6,8 +6,9 @@
  * authenticate a human and hand back which ShortPixel account approved.
  */
 
-import Provider from "oidc-provider";
+import Provider, { type KoaContextWithOIDC } from "oidc-provider";
 import { getOauthIssuer } from "../config/environment.js";
+import { requestLogger } from "../logging/request-logger.js";
 import { getAccount } from "./account-store.js";
 import { TRUSTED_CLIENTS } from "./clients.js";
 import { loadOrCreateCookieKeys } from "./cookie-keys.js";
@@ -52,6 +53,10 @@ export function createOauthProvider(): Provider {
       resourceIndicators: {
         enabled: true,
         defaultResource: () => MCP_RESOURCE_IDENTIFIER,
+        // Without this, a token request that omits `resource` while openid
+        // was granted gets an opaque UserInfo token instead of our JWE - and
+        // /mcp would then treat that dotless string as a raw API key.
+        useGrantedResource: () => true,
         // Signed (RS256) then encrypted (JWE dir + A256GCM): the token
         // embeds the user's API key, so only this server may read it.
         getResourceServerInfo: () => ({
@@ -135,6 +140,25 @@ export function createOauthProvider(): Provider {
   // builds every self-referencing URL (discovery document, endpoints,
   // redirects) as http:// instead of https://.
   provider.proxy = true;
+
+  // oidc-provider only shows the browser a generic error (e.g. "client_id
+  // metadata document fetch failed") and logs nothing itself, so record the
+  // real cause here.
+  const logProviderError = (event: string) => (ctx: KoaContextWithOIDC, error: Error) => {
+    const cause = (error as { cause?: unknown }).cause;
+    requestLogger.warn("oauth_provider_error", {
+      event,
+      error: error.message,
+      description: (error as { error_description?: string }).error_description,
+      cause: cause instanceof Error ? cause.message : undefined,
+      clientId: ctx?.oidc?.params?.client_id,
+    });
+  };
+
+  provider.on("authorization.error", logProviderError("authorization.error"));
+  provider.on("grant.error", logProviderError("grant.error"));
+  provider.on("registration_create.error", logProviderError("registration_create.error"));
+  provider.on("server_error", logProviderError("server_error"));
 
   return provider;
 }

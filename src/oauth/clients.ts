@@ -28,6 +28,23 @@ export const TRUSTED_CLIENTS: ClientMetadata[] = [
     token_endpoint_auth_method: "none",
     application_type: "native",
   },
+
+  // Claude's published Client ID Metadata Document, copied from
+  // https://claude.ai/oauth/mcp-oauth-client-metadata. oidc-provider looks
+  // static clients up before fetching a CIMD URL, so listing it here means
+  // no fetch at all: oidc-provider gives that fetch only 2.5s, and from our
+  // server it took 8.5s, failing every Claude login. Keep in sync if
+  // Anthropic changes the document. Its jwt-bearer grant is left out - we
+  // don't support it and Claude's login flow doesn't need it.
+  {
+    client_id: "https://claude.ai/oauth/mcp-oauth-client-metadata",
+    client_name: "Claude",
+    client_uri: "https://claude.ai",
+    redirect_uris: ["https://claude.ai/api/mcp/auth_callback"],
+    grant_types: ["authorization_code", "refresh_token"],
+    response_types: ["code"],
+    token_endpoint_auth_method: "none",
+  },
 ];
 
 // Hosts of redirect_uris belonging to AI clients we know. A client can
