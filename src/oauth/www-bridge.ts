@@ -26,6 +26,8 @@ import { storeAccount } from "./account-store.js";
 import { isVerifiedClientRedirect } from "./clients.js";
 import { MCP_RESOURCE_IDENTIFIER, MCP_SCOPE } from "./resource.js";
 
+const OIDC_SCOPES = new Set(["openid", "offline_access"]);
+
 function getWwwCallbackUrl(): string {
   return new URL("/oauth/www-callback", getOauthIssuer()).toString();
 }
@@ -272,6 +274,21 @@ export function createWwwCallbackHandler(provider: Provider) {
         clientId: authoritativeClientId,
       });
       grant.addResourceScope(MCP_RESOURCE_IDENTIFIER, MCP_SCOPE);
+
+      // The human approved this client on the consent screen, so also grant
+      // the OIDC scopes it asked for (Claude requests openid). Read them from
+      // the request, not interaction.prompt.details: on a first login the
+      // prompt is still "login" and its details are empty. Any requested
+      // scope left ungranted makes oidc-provider re-prompt for consent right
+      // after interactionFinished - an endless loop back to the consent page.
+      const requestedOidcScopes = getStringParam(params.scope)
+        .split(" ")
+        .filter((scope) => OIDC_SCOPES.has(scope));
+
+      if (requestedOidcScopes.length > 0) {
+        grant.addOIDCScope(requestedOidcScopes.join(" "));
+      }
+
       const grantId = await grant.save();
 
       await provider.interactionFinished(

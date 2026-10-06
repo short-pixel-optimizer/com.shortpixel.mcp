@@ -171,6 +171,7 @@ export class SpioTools {
             .describe("Any array echoed back unchanged in API response for caller correlation"),
         },
         annotations: {
+          title: "Optimize images",
           readOnlyHint: false,
           destructiveHint: false,
           idempotentHint: false,
