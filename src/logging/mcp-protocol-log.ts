@@ -1,5 +1,5 @@
 import { get } from "../config/environment.js";
-import { requestLogger } from "./request-logger.js";
+import { requestLogger, sanitizeHttpHeaders } from "./request-logger.js";
 
 function isMcpProtocolLoggingEnabled(): boolean {
   const value = (get("LOG_MCP_PROTOCOL", "true") ?? "true").toLowerCase();
@@ -197,7 +197,7 @@ export function logInboundMcpProtocol(
     method: message.method,
     id: message.id,
     toolName: readToolName(message),
-    headers: requestHeaders,
+    headers: sanitizeHttpHeaders(requestHeaders),
     payload: message,
   });
 }
@@ -232,7 +232,7 @@ export function logOutboundMcpProtocol(
       ? readToolNamesFromToolsList(normalizedPayload)
       : undefined,
     statusCode,
-    headers: responseHeaders,
+    headers: sanitizeHttpHeaders(responseHeaders),
     payload: normalizedPayload,
     payloadMissing: responseBody === undefined,
   });
