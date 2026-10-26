@@ -38,6 +38,12 @@ export function createOauthProvider(): Provider {
       required: () => true,
     },
 
+    // oidc-provider aborts its outgoing fetches (client metadata documents,
+    // client jwks_uri) after 2.5s; from our server they have taken up to
+    // 8.5s. Same request and SSRF-protected dispatcher, just a longer limit.
+    fetch: (url, options) =>
+      globalThis.fetch(url, { ...options, signal: AbortSignal.timeout(15_000) }),
+
     features: {
       // We supply our own interaction UI (bridged through
       // com.shortpixel.www's login/consent screen) instead of

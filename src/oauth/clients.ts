@@ -45,6 +45,24 @@ export const TRUSTED_CLIENTS: ClientMetadata[] = [
     response_types: ["code"],
     token_endpoint_auth_method: "none",
   },
+
+  // ChatGPT's published Client ID Metadata Document, copied from
+  // https://chatgpt.com/oauth/client.json for the same reason as Claude's
+  // above. ChatGPT authenticates at /token with private_key_jwt, so its
+  // signing keys are still fetched from jwks_uri (see the fetch timeout in
+  // provider.ts). Keep in sync if OpenAI changes the document.
+  {
+    client_id: "https://chatgpt.com/oauth/client.json",
+    client_name: "ChatGPT",
+    client_uri: "https://chatgpt.com/",
+    logo_uri: "https://persistent.oaistatic.com/sonic/misc/openai-logo.png",
+    redirect_uris: ["https://chatgpt.com/connector_platform_oauth_redirect"],
+    grant_types: ["authorization_code", "refresh_token"],
+    response_types: ["code"],
+    token_endpoint_auth_method: "private_key_jwt",
+    token_endpoint_auth_signing_alg: "RS256",
+    jwks_uri: "https://chatgpt.com/oauth/jwks.json",
+  },
 ];
 
 // Hosts of redirect_uris belonging to AI clients we know. A client can
